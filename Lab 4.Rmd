@@ -1,0 +1,410 @@
+---
+title: "Lab 4: MATH 4753"
+author: "Hunter DeVoe"
+date: "February 8, 2023"
+output: 
+  html_document:
+    toc: yes
+    toc_float: yes
+    theme: spacelab
+    highlight: pygments
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+pacman::p_load(pacman, tidyverse, lattice, s20x, knitr, devtools, roxygen2, testthat)
+```
+
+# Task 1
+
+```{r}
+getwd()
+```
+
+# Task 2
+
+```{r}
+spruce = read.csv("SPRUCE.csv")
+tail(spruce)
+```
+
+# Task 3
+
+* Load the library s20x and make a lowess smoother scatter plot (Height vs BHDiameter) using trendscatter() (use f=0.5) and record the plot.  
+
+```{r}
+trendscatter(Height ~ BHDiameter, f = 0.5, data = spruce)
+```
+
+* Make a linear model object.
+
+```{r}
+spruce.lm = with(spruce, lm(Height ~ BHDiameter))
+```
+
+* Find the residuals using residuals(), put them into an object called height.res.
+
+```{r}
+height.res <- residuals(spruce.lm)
+```
+
+
+* Find the fitted vlues using fitted() and place them in an object called height.fit.
+
+```{r}
+height.fit <- fitted(spruce.lm)
+```
+
+
+* Plot the residuals vs fitted values.
+
+```{r}
+plot(height.res ~ height.fit)
+```
+
+* Plot the residuals vs fitted values using trendscatter().
+
+```{r}
+trendscatter(height.res ~ height.fit, f = 0.5, main = "Plot of height.res vs height.fit")
+```
+
+* What shape is seen in the plot? Compare it with the curve made with the trendscatter function (second line after Task 3).  
+
+The shape made after plotting height.res vs height.fit is a parabolic curve that opens down. The trendscatter plot made before this one had a curve that increased, and then began to plateau.  
+
+* Using the plot() function, and spruce.lm, make the residual plot.  
+
+```{r}
+plot(spruce.lm, which = 1)
+```
+
+* Check normality using the s20x function normcheck().  
+
+```{r}
+normcheck(spruce.lm, shapiro.wilk = TRUE)
+```
+
+* What is the p-value for the Shapiro-Wilk test? What is the NULL hypothesis in this case?  
+
+The p-value in this case is 0.29, so the NULL hypothesis holds true for our data.  
+
+* $y_i=β_0+β_1 x_i+ϵ_i, ϵ_i∼N(0,σ^2)$ describes the model used above. Notice that the residuals $r_i$ estimate the model errors $ϵ_i$. If the model works well with the data we should expect that the residuals are approximately Normal in distribution with mean 0 and constant variance.  
+
+I'll take the mean of the residuals: 
+
+```{r}
+round(mean(height.res), 2)
+```
+
+* Conclusion  
+
+Based on our residual graph, we are finding signal that is missing from our Height vs BHDiameter graph. Therefore, the model we are using is incorrect and needs a quadratic factor to be added to it.  
+
+# Task 4  
+
+* Fit a quadratic to the points using the appropriate formula inside the lm() function and placing the output in the object quad.lm.  
+
+```{r}
+quad.lm <- lm(formula = Height ~ BHDiameter + I(BHDiameter^2), data = spruce)
+quad.lm
+```
+
+
+* Make a fresh scatter plot of Height vs BHDiameter and add the quadratic curve to it.  
+
+```{r}
+coef(quad.lm)
+plot(Height ~ BHDiameter, data = spruce, pch = 21, bg = "Blue")
+
+quadCurve = function(x) {
+  quad.lm$coef[1] + quad.lm$coef[2] * x + quad.lm$coef[3] * x^2
+}
+curve(quadCurve, lwd = 2, col = "steelblue", add = TRUE)
+```
+
+* Make quad.fit, a vector of fitted values.  
+
+```{r}
+quad.fit <- fitted(quad.lm)
+```
+
+* Make a plot of the residuals vs fitted values, use plot() and quad.lm.  
+
+```{r}
+plot(quad.lm, which = 1)
+```
+
+* Construct a QQ plot using normcheck().  
+
+```{r}
+normcheck(quad.lm, shapiro.wilk = TRUE)
+```
+
+* What is the value of the p-value in the Shapiro-Wilk test? What do you conclude?
+
+The p-value from the Shapiro-Wilk test is 0.684, which is over 2 times larger than the previous p-value of 0.29. Therefore, we can conclude that we have added the missing signal into our main Height vs BHDiameter plot and removed it from the Residual vs Fitted plot.
+
+
+# Task 5  
+
+* Summarize quad.lm and paste it here.  
+
+```{r}
+summary(quad.lm)
+```
+
+* What is the value of $\hat{β_0}$?  
+
+The value of $\hat{β_0} = 0.860896$  
+
+* What is the value of $\hat{β_1}$  
+
+The value of $\hat{β_1} = 1.469592$  
+
+* What is the value of $\hat{β_2}$?  
+
+The value of $\hat{β_2} = -0.027457$  
+
+* Make interval estimates for $\hat{β_0}, \hat{β_1}, \hat{β_2}$
+
+```{r}
+ciReg(quad.lm)
+```
+
+* Write down the equation of the fitted line.  
+
+$0.860896 + 1.469592x - 0.027457x^2$
+
+* Predict the Height of spruce when the Diameter is 15, 18, and 20cm (use predict())  
+
+```{r}
+testdata <- data.frame(BHDiameter = 15)
+predict(quad.lm, newdata = testdata)
+
+testdata <- data.frame(BHDiameter = 18)
+predict(quad.lm, newdata = testdata)
+
+testdata <- data.frame(BHDiameter = 20)
+predict(quad.lm, newdata = testdata)
+```
+* Compare with previous predictions.  
+
+In Lab 3, we got the following predictions:  
+
+* When the BHDiameter = 15, the predicted Height = 16.36895  
+* When the BHDiameter = 18, the predicted Height = 17.81338  
+* When the BHDiameter = 20, the predicted Height = 18.77632  
+
+We can see our new predictions are slightly bigger than they were in Lab 3.  
+
+* What is the value of multiple $R^2$? Compare it with the previous model.  
+
+Our new multiple $R^2$ is 0.7741, and the previous multiple $R^2$ found in Lab 3 is 0.6569.  
+
+* Make use of adjusted R squared to compare models to determine which is "better".  
+
+Using the summary on spruce.lm and quad.lm, we can find the adjusted R squared value.  
+
+```{r}
+summary(spruce.lm)
+summary(quad.lm)
+```
+
+From the summary, spruce.lm has an adjusted multiple R squared value of 0.6468, and quad.lm has an adjusted multiple R squared value of 0.7604. An adjusted multiple R squared value of 0 indicates that the response variable cannot be explained by the predictor value, and a multiple R squared value of 1 indicates that the response variable can be perfectly explained without error by the predictor variable. Therefore, quad.lm is the "better" model based off of its adjusted R squared value.  
+
+* What does multiple R squared mean in this case?  
+
+The adjusted R squared considers and tests different independent variables against the model, while the multiple R squared does not. So, the R squared and adjusted R squared value will usually differ by a few values. We can see that spruce.lm has an R squared value of 0.6569, and quad.lm has an R squared value of 0.7741, both of which are slightly higher than their respective adjusted R squared values.  
+
+* Which model explains the most variability in the Height?  
+
+Model 2 explains the most variability in Height because it factors in a quadratic term, which in turn gives it a better p-value.
+
+* Use anova() and compare the two models. Paste anova output here and give your conclusion underneath.  
+
+```{r}
+anova(spruce.lm, quad.lm)
+```
+We can see that the Pr(>F) = 0.0002269, which is less than 0.05, meaning Model 2 is the better model.
+
+* Find TSS, record it here.  
+
+```{r}
+yhat=with(spruce,predict(quad.lm,data.frame(BHDiameter)))
+TSS=with(spruce,sum((Height-mean(Height))^2))
+cat("TSS = ", TSS, "\n")
+```
+
+* Find MSS, record it here.
+
+```{r}
+MSS=with(spruce,sum((yhat-mean(Height))^2))
+cat("MSS = ", MSS, "\n")
+```
+
+* Find RSS, record it here.  
+
+```{r}
+RSS=with(spruce,sum((Height-yhat)^2))
+cat("RSS = ", RSS, "\n")
+```
+* What is the value of $\frac{MSS}{TSS}$?  
+
+```{r}
+MSS / TSS
+```
+Interestingly, $\frac{MSS}{TSS}$ has the same value as the multiple R squared value of quad.lm.
+
+# Task 6  
+
+* Investigate unusual points by making a cooks plot using cooks20x().  
+
+```{r}
+cooks20x(quad.lm)
+```
+
+* Use the web to find out what Cook's Distance is and how it is used - write a couple of sentences here.  
+
+Cook's Distance is used in Regression Analysis to fine outliers that could influence a set of predictor variables. In other words, it identifies points that negatively affect the model.  
+
+* What does Cook's Distance for the quadrtic model and data tell you?  
+
+In the model above, we can see a few points, 18, 21, and 24, that are possibly affecting our model for the spruce dataset.
+
+* Make a new object called quad2.lm which is made from the same quadratic model using the data with the datum which has the highest Cook's Distance removed.
+
+```{r}
+quad2.lm=lm(Height~BHDiameter + I(BHDiameter^2) , data=spruce[-24,])
+cooks20x(quad2.lm)
+```
+
+* Compare with the summary information from quad.lm.  
+
+```{r}
+summary(quad.lm)
+summary(quad2.lm)
+```
+
+From both summaries, we can see that quad2.lm has a larger R squared and adjusted R squared value than quad.lm has.
+
+* What do you conclude?  
+
+Removing the datum which has the highest Cook's Distance likely improved our model a little bit more, and should allow for a better curve or regression line.  
+
+# Task 7  
+
+Prove using latex that $y = β_0 + β_1x + β_2(x_0-x_k)I(x > x_k)$, where $I()$ is 1 when $x > x_k$ and $0$ else.  
+
+Let line 1 and line 2 be defined as the following:  
+
+<center>
+
+$l1: y = β_0 + β_1x$  
+$l2: y = β_0 + δ + (β_1 + ζ)x$
+
+</center>
+
+We can set $l1$ and $l2$ equal to each other:  
+
+<center>
+
+$β_0 + β_1x = β_0 + δ + (β_1 + ζ)x$
+
+</center>
+
+Now we simplify:  
+
+<center>
+
+$δ = -ζx_k$
+
+</center>
+
+We now have a formula for $δ$, which we can substitute back in to $l2$:
+
+<center>
+
+$y = y = β_0 + -ζx_k$ + (β_1 + ζ)x$
+
+</center>
+
+Which equals:  
+
+<center>
+
+$y = β_0 + β_1x + ζ(x - x_k)$
+
+</center>
+
+$l2$ is just $l1$ with an added adjustment term. We will use an indicator function that will be 1 when $x > x_k$ and 0 any other time:  
+
+<center>
+
+$y = β_0 + β_1x + ζ(x - x_k)I(x > x_k)$
+
+</center>
+
+* Reproduce the plot using the code included in the R script $(x_k = 18)$.  
+
+```{r}
+sp2 <- within(spruce, X<-(BHDiameter-18)*(BHDiameter>18)) # this makes a new variable and places it within the same df
+sp2
+
+lmp=lm(Height~BHDiameter + X,data=sp2)
+tmp=summary(lmp)
+names(tmp)
+myf = function(x,coef){
+  coef[1]+coef[2]*(x) + coef[3]*(x-18)*(x-18>0)
+}
+plot(spruce,main="Piecewise regression")
+myf(0, coef=tmp$coefficients[,"Estimate"])
+curve(myf(x,coef=tmp$coefficients[,"Estimate"] ),add=TRUE, lwd=2,col="Blue")
+abline(v=18)
+text(18,16,paste("R sq.=",round(tmp$r.squared,4) ))
+```
+
+# Task 8
+
+* Please install the following packages. You may use the single function: install.packages(c("devtools", "roxygen2", "testthat", "knitr"))
+
+These functions are installed at the top of the project.
+
+This function installs my local package from its zip file.
+```{r}
+devtools::install_local("C:/Users/Hunter/Desktop/Math4753Spring2023.zip")
+```
+
+* In an RMD chunk, load your package using library().
+
+```{r}
+library(Math4753Spring2023)
+```
+
+
+* Use your function so I can see your output.
+```{r}
+v <- c(1, 2, 3, 4, 5, 5)
+Math4753Spring2023::getmode(v)
+```
+
+* Explain in a couple of sentences what the function does.
+
+The function that I imported gets the mode from a given vector. The mode of a vector is the value that appears the most. In this example, 5 appears twice, so 5 is the mode of v.
+
+```{r}
+# CLEAN UP #################################################
+
+# Clear environment
+rm(list = ls()) 
+
+# Clear packages
+p_unload(all)  # Remove all add-ons
+
+# Clear plots
+dev.off()  # But only if there IS a plot
+
+# Clear console
+cat("\014")  # ctrl+L
+
+# Clear mind :)
+```
